@@ -33,4 +33,10 @@ describe("built-in tool system prompt contributions", () => {
 
 		expect(definition.promptGuidelines).toBeUndefined();
 	});
+
+	test("scopes bash session-environment guidance to metadata requests", () => {
+		expect(bashToolSystemPromptContribution.guidelines).toEqual([
+			"When the user asks which model, provider, reasoning level, or Pi session is active, inspect the relevant PI_* environment variables instead of inferring the answer.",
+		]);
+	});
 });
