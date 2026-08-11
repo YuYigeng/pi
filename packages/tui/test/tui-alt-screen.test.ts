@@ -189,11 +189,18 @@ describe("TuiAltScreen", () => {
 		assert.deepStrictEqual(overlayInputs, inputs);
 		assert.strictEqual(transcript.scrollTop, initialScrollTop);
 
-		overlayHandle.setHidden(true);
+		overlayHandle.unfocus({ target: transcript });
 		terminal.sendInput("\x1b[<64;1;1M");
 		await terminal.waitForRender();
 		assert.deepStrictEqual(overlayInputs, inputs);
 		assert.strictEqual(transcript.scrollTop, initialScrollTop - 1);
+
+		overlayHandle.focus();
+		overlayHandle.setHidden(true);
+		terminal.sendInput("\x1b[<64;1;1M");
+		await terminal.waitForRender();
+		assert.deepStrictEqual(overlayInputs, inputs);
+		assert.strictEqual(transcript.scrollTop, initialScrollTop - 2);
 		tui.stop();
 	});
 
