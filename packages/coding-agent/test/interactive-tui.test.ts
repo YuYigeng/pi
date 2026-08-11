@@ -170,6 +170,59 @@ describe("InteractiveMode copy confirmation", () => {
 		clipboardMocks.copyToClipboard.mockResolvedValue(undefined);
 	});
 
+	it("uses the shared clipboard implementation for fullscreen text selection", async () => {
+		const terminal = new RecordingTerminal(20, 4);
+		const ui = createInteractiveTui({
+			tuiMode: "fullscreen",
+			showHardwareCursor: false,
+			logDirectory: "/tmp",
+			terminal,
+		});
+		ui.addChild(new Text("alpha\nbeta\ngamma\ndelta", 0, 0));
+
+		ui.start();
+		try {
+			await terminal.waitForRender();
+			terminal.sendInput("\x1b[<0;1;1M");
+			terminal.sendInput("\x1b[<32;4;2M");
+			terminal.sendInput("\x1b[<0;4;2m");
+			await vi.waitFor(() => expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith("alpha\nbeta"));
+
+			expect(terminal.writes.some((write) => write.includes("\x1b]52;c;"))).toBe(false);
+			await terminal.waitForRender();
+			expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(true);
+		} finally {
+			ui.stop();
+		}
+	});
+
+	it("does not report a successful fullscreen selection copy when the clipboard write fails", async () => {
+		clipboardMocks.copyToClipboard.mockRejectedValue(new Error("clipboard unavailable"));
+		const terminal = new RecordingTerminal(20, 4);
+		const ui = createInteractiveTui({
+			tuiMode: "fullscreen",
+			showHardwareCursor: false,
+			logDirectory: "/tmp",
+			terminal,
+		});
+		ui.addChild(new Text("alpha\nbeta\ngamma\ndelta", 0, 0));
+
+		ui.start();
+		try {
+			await terminal.waitForRender();
+			terminal.sendInput("\x1b[<0;1;1M");
+			terminal.sendInput("\x1b[<32;4;2M");
+			terminal.sendInput("\x1b[<0;4;2m");
+			await vi.waitFor(() => {
+				expect(terminal.getViewport().some((line) => line.includes("Failed to copy"))).toBe(true);
+			});
+
+			expect(terminal.getViewport().some((line) => line.includes("Copied!"))).toBe(false);
+		} finally {
+			ui.stop();
+		}
+	});
+
 	it("flashes Copied! for the copy shortcut in fullscreen mode", async () => {
 		const terminal = new RecordingTerminal(40, 4);
 		const ui = createInteractiveTui({
