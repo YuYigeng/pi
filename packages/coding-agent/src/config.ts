@@ -358,7 +358,7 @@ export function getSelfUpdateUnavailableInstruction(
 export function getUpdateInstruction(packageName: string): string {
 	const method = detectInstallMethod();
 	const command = getSelfUpdateCommandForMethod(method, packageName);
-	if (command) {
+	if (command && isManagedByGlobalPackageManager(method, packageName)) {
 		return `Run: ${command.display}`;
 	}
 	return getSelfUpdateUnavailableInstruction(packageName);
