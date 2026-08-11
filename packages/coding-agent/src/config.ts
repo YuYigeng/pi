@@ -75,11 +75,21 @@ export function detectInstallMethod(): InstallMethod {
 		return "bun-binary";
 	}
 
-	const resolvedPath = `${__dirname}\0${process.execPath || ""}`.toLowerCase().replace(/\\/g, "/");
+	const resolvedPaths = [__dirname, process.execPath || ""].map((path) => path.toLowerCase().replace(/\\/g, "/"));
+	const resolvedPath = resolvedPaths.join("\0");
+	const pnpmHome = process.env.PNPM_HOME?.toLowerCase().replace(/\\/g, "/").replace(/\/$/, "");
+	const pathsUnderPnpmHome = pnpmHome
+		? resolvedPaths.filter((path) => path === pnpmHome || path.startsWith(`${pnpmHome}/`))
+		: [];
 
-	if (resolvedPath.includes("/pnpm/") || resolvedPath.includes("/.pnpm/")) {
+	if (
+		resolvedPath.includes("/.pnpm/") ||
+		/\/pnpm\/(?:global|store)(?:\/|$)/.test(resolvedPath) ||
+		pathsUnderPnpmHome.some((path) => /^\/(?:global|store)(?:\/|$)/.test(path.slice(pnpmHome?.length ?? 0)))
+	) {
 		return "pnpm";
 	}
+	if (pathsUnderPnpmHome.length > 0) return "unknown";
 	if (resolvedPath.includes("/yarn/") || resolvedPath.includes("/.yarn/")) {
 		return "yarn";
 	}

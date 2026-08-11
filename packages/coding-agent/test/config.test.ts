@@ -11,6 +11,7 @@ import {
 
 const execPathDescriptor = Object.getOwnPropertyDescriptor(process, "execPath");
 const originalPath = process.env.PATH;
+const originalPnpmHome = process.env.PNPM_HOME;
 const originalPiPackageDir = process.env.PI_PACKAGE_DIR;
 const originalArgv1 = process.argv[1];
 let tempDir: string | undefined;
@@ -30,6 +31,11 @@ afterEach(() => {
 		delete process.env.PATH;
 	} else {
 		process.env.PATH = originalPath;
+	}
+	if (originalPnpmHome === undefined) {
+		delete process.env.PNPM_HOME;
+	} else {
+		process.env.PNPM_HOME = originalPnpmHome;
 	}
 	if (originalPiPackageDir === undefined) {
 		delete process.env.PI_PACKAGE_DIR;
@@ -155,6 +161,34 @@ describe("detectInstallMethod", () => {
 		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
 			"Run: pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @earendil-works/pi-coding-agent",
 		);
+	});
+
+	test("does not infer pnpm from an unrelated package manager under PNPM_HOME", () => {
+		const temp = mkdtempSync(join(tmpdir(), "pi-pnpm-wrapper-"));
+		const packageDir = join(temp, "pnpm", "global-nub", "node_modules", "@earendil-works", "pi-coding-agent");
+		mkdirSync(packageDir, { recursive: true });
+		tempDir = temp;
+		process.env.PNPM_HOME = join(temp, "pnpm");
+		process.env.PI_PACKAGE_DIR = packageDir;
+		setExecPath(join(packageDir, "dist", "cli.js"));
+
+		expect(detectInstallMethod()).toBe("unknown");
+		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
+			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
+		);
+	});
+
+	test("detects pnpm global installs under a custom PNPM_HOME", () => {
+		const temp = mkdtempSync(join(tmpdir(), "pi-custom-pnpm-home-"));
+		const pnpmHome = join(temp, "custom-home");
+		const packageDir = join(pnpmHome, "global", "5", "node_modules", "@earendil-works", "pi-coding-agent");
+		mkdirSync(packageDir, { recursive: true });
+		tempDir = temp;
+		process.env.PNPM_HOME = pnpmHome;
+		process.env.PI_PACKAGE_DIR = packageDir;
+		setExecPath(join(packageDir, "dist", "cli.js"));
+
+		expect(detectInstallMethod()).toBe("pnpm");
 	});
 
 	test("does not self-update unknown wrapper installs", () => {
