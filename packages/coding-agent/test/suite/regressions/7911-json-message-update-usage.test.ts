@@ -12,7 +12,7 @@ describe("regression #7911: JSON message updates include usage", () => {
 		}
 	});
 
-	it("keeps current assistant usage after removing cumulative snapshots", async () => {
+	it("keeps non-zero assistant usage after removing cumulative snapshots", async () => {
 		const harness = await createHarness();
 		harnesses.push(harness);
 		harness.setResponses([fauxAssistantMessage("stream usage")]);
@@ -26,7 +26,15 @@ describe("regression #7911: JSON message updates include usage", () => {
 			if (sessionUpdate.message.role !== "assistant") {
 				throw new Error("message_update must contain an assistant message");
 			}
-			expect(toJsonEvent(sessionUpdate)).toHaveProperty("usage", sessionUpdate.message.usage);
+			const wireUpdate = toJsonEvent(sessionUpdate);
+			expect(sessionUpdate.message.usage.totalTokens).toBeGreaterThan(0);
+			expect(wireUpdate).toHaveProperty("usage", sessionUpdate.message.usage);
+			expect(wireUpdate).not.toHaveProperty("message");
+			expect(wireUpdate.assistantMessageEvent).not.toHaveProperty("partial");
+			expect(JSON.parse(JSON.stringify(wireUpdate))).toHaveProperty(
+				"usage.totalTokens",
+				sessionUpdate.message.usage.totalTokens,
+			);
 		}
 	});
 });
