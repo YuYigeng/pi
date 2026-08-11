@@ -1,3 +1,4 @@
+import type { Usage } from "@earendil-works/pi-ai/compat";
 import type { AgentSessionEvent } from "../core/agent-session.ts";
 
 type WithoutPartial<T> = T extends { partial: unknown } ? Omit<T, "partial"> : T;
@@ -9,6 +10,7 @@ type ToJsonEvent<T> = T extends {
 	? {
 			type: "message_update";
 			assistantMessageEvent: WithoutPartial<TAssistantMessageEvent>;
+			usage: Usage;
 		}
 	: T;
 
@@ -29,12 +31,15 @@ export function toJsonEvent(event: AgentSessionEvent): JsonAgentSessionEvent {
 	if (event.type !== "message_update") {
 		return event;
 	}
+	if (event.message.role !== "assistant") {
+		throw new Error("message_update events must contain an assistant message");
+	}
 
 	const assistantMessageEvent = event.assistantMessageEvent;
 	if (!("partial" in assistantMessageEvent)) {
-		return { type: "message_update", assistantMessageEvent };
+		return { type: "message_update", assistantMessageEvent, usage: event.message.usage };
 	}
 
 	const { partial: _partial, ...deltaEvent } = assistantMessageEvent;
-	return { type: "message_update", assistantMessageEvent: deltaEvent };
+	return { type: "message_update", assistantMessageEvent: deltaEvent, usage: event.message.usage };
 }
