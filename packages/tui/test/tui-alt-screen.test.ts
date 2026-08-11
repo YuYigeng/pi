@@ -163,6 +163,40 @@ describe("TuiAltScreen", () => {
 		tui.stop();
 	});
 
+	it("routes viewport input to a focused overlay before scrolling the transcript", async () => {
+		const terminal = new VirtualTerminal(20, 4);
+		const tui = new TuiAltScreen(terminal);
+		const transcript = new ScrollView(
+			new Text(Array.from({ length: 10 }, (_, index) => `line ${index + 1}`).join("\n"), 0, 0),
+			{ follow: "end", primary: true },
+		);
+		const overlayInputs: string[] = [];
+		const overlay = {
+			render: () => ["overlay"],
+			invalidate: () => {},
+			handleInput: (data: string) => overlayInputs.push(data),
+		};
+		tui.setLayoutRoot(transcript);
+		const overlayHandle = tui.showOverlay(overlay);
+		tui.start();
+		await terminal.waitForRender();
+		const initialScrollTop = transcript.scrollTop;
+
+		const inputs = ["\x1b[<64;1;1M", "\x1b[5~", "\x1b[6~"];
+		for (const input of inputs) terminal.sendInput(input);
+		await terminal.waitForRender();
+
+		assert.deepStrictEqual(overlayInputs, inputs);
+		assert.strictEqual(transcript.scrollTop, initialScrollTop);
+
+		overlayHandle.setHidden(true);
+		terminal.sendInput("\x1b[<64;1;1M");
+		await terminal.waitForRender();
+		assert.deepStrictEqual(overlayInputs, inputs);
+		assert.strictEqual(transcript.scrollTop, initialScrollTop - 1);
+		tui.stop();
+	});
+
 	it("uses button-motion tracking inside terminal multiplexers", () => {
 		const environmentKeys = ["TMUX", "ZELLIJ", "STY", "TERM"] as const;
 		const previousEnvironment = new Map(environmentKeys.map((key) => [key, process.env[key]]));

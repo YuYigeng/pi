@@ -415,6 +415,12 @@ export abstract class TuiBase extends Container implements TUI {
 		return this.focusedComponent;
 	}
 
+	protected isFocusedComponentOverlay(): boolean {
+		return this.overlayStack.some(
+			(entry) => entry.component === this.focusedComponent && this.isOverlayVisible(entry),
+		);
+	}
+
 	setFocus(component: Component | null): void {
 		this.setFocusInternal({ component, overlayFocusRestore: "clear" });
 	}

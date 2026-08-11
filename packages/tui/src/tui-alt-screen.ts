@@ -546,6 +546,7 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 			return { consume: true };
 		}
 		if (data === FOCUS_IN) return { consume: true };
+		if (this.isFocusedComponentOverlay() && !this.activeSearch?.overlay?.isFocused()) return;
 
 		const wheelEvent = this.parseWheelEvent(data);
 		if (wheelEvent) {
