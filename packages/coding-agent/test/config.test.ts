@@ -159,7 +159,7 @@ describe("detectInstallMethod", () => {
 
 		expect(detectInstallMethod()).toBe("pnpm");
 		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
-			"Run: pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @earendil-works/pi-coding-agent",
+			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
 		);
 	});
 
@@ -168,7 +168,7 @@ describe("detectInstallMethod", () => {
 		const packageDir = join(temp, "pnpm", "global-nub", "node_modules", "@earendil-works", "pi-coding-agent");
 		mkdirSync(packageDir, { recursive: true });
 		tempDir = temp;
-		process.env.PNPM_HOME = join(temp, "pnpm");
+		process.env.PNPM_HOME = `${join(temp, "pnpm")}/`;
 		process.env.PI_PACKAGE_DIR = packageDir;
 		setExecPath(join(packageDir, "dist", "cli.js"));
 
@@ -189,6 +189,20 @@ describe("detectInstallMethod", () => {
 		setExecPath(join(packageDir, "dist", "cli.js"));
 
 		expect(detectInstallMethod()).toBe("pnpm");
+	});
+
+	test("does not suggest pnpm for a pnpm-shaped install outside the active global root", () => {
+		const temp = mkdtempSync(join(tmpdir(), "pi-unmanaged-pnpm-"));
+		const packageDir = join(temp, "pnpm", "store", "node_modules", "@earendil-works", "pi-coding-agent");
+		mkdirSync(packageDir, { recursive: true });
+		tempDir = temp;
+		process.env.PI_PACKAGE_DIR = packageDir;
+		setExecPath(join(packageDir, "dist", "cli.js"));
+
+		expect(detectInstallMethod()).toBe("pnpm");
+		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
+			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
+		);
 	});
 
 	test("does not self-update unknown wrapper installs", () => {
@@ -322,7 +336,7 @@ describe("detectInstallMethod", () => {
 
 		expect(detectInstallMethod()).toBe("npm");
 		expect(getUpdateInstruction("@earendil-works/pi-coding-agent")).toBe(
-			"Run: npm install -g --ignore-scripts --min-release-age=0 @earendil-works/pi-coding-agent",
+			"Update @earendil-works/pi-coding-agent using the package manager, wrapper, or source checkout that provides this installation.",
 		);
 	});
 
@@ -363,6 +377,9 @@ describe("detectInstallMethod", () => {
 				},
 			],
 		});
+		expect(getUpdateInstruction("@mariozechner/pi-coding-agent")).toBe(
+			"Run: pnpm install -g --ignore-scripts --config.minimumReleaseAge=0 @mariozechner/pi-coding-agent",
+		);
 	});
 
 	test("self-updates pnpm v11 global installs resolved through the store", () => {

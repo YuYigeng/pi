@@ -77,19 +77,22 @@ export function detectInstallMethod(): InstallMethod {
 
 	const resolvedPaths = [__dirname, process.execPath || ""].map((path) => path.toLowerCase().replace(/\\/g, "/"));
 	const resolvedPath = resolvedPaths.join("\0");
-	const pnpmHome = process.env.PNPM_HOME?.toLowerCase().replace(/\\/g, "/").replace(/\/$/, "");
-	const pathsUnderPnpmHome = pnpmHome
-		? resolvedPaths.filter((path) => path === pnpmHome || path.startsWith(`${pnpmHome}/`))
+	const pnpmHome = process.env.PNPM_HOME?.toLowerCase().replace(/\\/g, "/").replace(/\/+$/, "");
+	const pnpmHomeRelativePaths = pnpmHome
+		? resolvedPaths.flatMap((path) => {
+				if (path === pnpmHome) return [""];
+				return path.startsWith(`${pnpmHome}/`) ? [path.slice(pnpmHome.length + 1)] : [];
+			})
 		: [];
 
 	if (
 		resolvedPath.includes("/.pnpm/") ||
 		/\/pnpm\/(?:global|store)(?:\/|$)/.test(resolvedPath) ||
-		pathsUnderPnpmHome.some((path) => /^\/(?:global|store)(?:\/|$)/.test(path.slice(pnpmHome?.length ?? 0)))
+		pnpmHomeRelativePaths.some((path) => /^(?:global|store)(?:\/|$)/.test(path))
 	) {
 		return "pnpm";
 	}
-	if (pathsUnderPnpmHome.length > 0) return "unknown";
+	if (pnpmHomeRelativePaths.length > 0) return "unknown";
 	if (resolvedPath.includes("/yarn/") || resolvedPath.includes("/.yarn/")) {
 		return "yarn";
 	}
@@ -357,11 +360,12 @@ export function getSelfUpdateUnavailableInstruction(
 
 export function getUpdateInstruction(packageName: string): string {
 	const method = detectInstallMethod();
+	if (method === "bun-binary") return getSelfUpdateUnavailableInstruction(packageName);
 	const command = getSelfUpdateCommandForMethod(method, packageName);
 	if (command && isManagedByGlobalPackageManager(method, packageName)) {
 		return `Run: ${command.display}`;
 	}
-	return getSelfUpdateUnavailableInstruction(packageName);
+	return `Update ${packageName} using the package manager, wrapper, or source checkout that provides this installation.`;
 }
 
 // =============================================================================
