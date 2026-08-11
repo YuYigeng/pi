@@ -948,6 +948,33 @@ describe("TuiAltScreen", () => {
 		tui.stop();
 	});
 
+	it("reports a host clipboard failure without emitting an OSC 52 fallback", async () => {
+		const terminal = new RecordingTerminal(20, 4);
+		const copiedText: string[] = [];
+		const tui = new TuiAltScreen(terminal, undefined, undefined, {
+			copyToClipboard: async (text) => {
+				copiedText.push(text);
+				throw new Error("clipboard unavailable");
+			},
+		});
+		tui.addChild(new Text("alpha\nbeta\ngamma\ndelta", 0, 0));
+		tui.start();
+		await terminal.waitForRender();
+
+		terminal.sendInput("\x1b[<0;1;1M");
+		terminal.sendInput("\x1b[<32;4;2M");
+		terminal.sendInput("\x1b[<0;4;2m");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await terminal.waitForRender();
+
+		assert.deepStrictEqual(copiedText, ["alpha\nbeta"]);
+		assert.ok(!terminal.events.some((event) => event.type === "write" && event.data.includes("\x1b]52;c;")));
+		assert.ok(terminal.getViewport().some((line) => line.includes("Failed to copy")));
+		assert.ok(!terminal.getViewport().some((line) => line.includes("Copied!")));
+
+		tui.stop();
+	});
+
 	it("does not append whitespace to double-click word highlighting", async () => {
 		const terminal = new RecordingTerminal(20, 1);
 		const tui = new TuiAltScreen(terminal);
