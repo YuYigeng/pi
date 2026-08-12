@@ -690,7 +690,7 @@ else {
 		process.env.PATH = `${fakeBinDir}${process.env.PATH ? `${delimiter}${process.env.PATH}` : ""}`;
 		process.env.PI_PACKAGE_DIR = selfPackageDir;
 		Object.defineProperty(process, "execPath", {
-			value: join(tempDir, "pnpm", "bin", "node"),
+			value: join(globalRoot, ".pnpm", "node"),
 			configurable: true,
 		});
 		vi.stubGlobal(
